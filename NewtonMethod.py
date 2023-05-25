@@ -25,21 +25,21 @@ def newtonMethod(f, grad_f, H, x0, e1, e2, M):
             print(f'Да. Расчет окончен. x* = x{k} = {x}')
             graph(x, len(f_values))
             return x
-        print(f'Нет.\n\n[ШАГ 6_{k}]\nВычислить H(x{k}) : {H(x)}\n[ШАГ 7_{k}]\nВычислить H^-1(x{k}\n')
-        H_inverse = np.linalg.inv(H(x))  # шаг 6-7 (H(x), H^-1(x)
+        print(f'Нет.\n\n[ШАГ 6_{k}]\nВычислить H(x{k}) : {H(f,x)}\n[ШАГ 7_{k}]\nВычислить H^-1(x{k})\n')
+        H_inverse = np.linalg.inv(H(f, x))  # шаг 6-7 (H(x), H^-1(x)
         print(f'\n[ШАГ 8_{k}]\n Проверить выполнение условия H^-1(x{k} > 0 : H^-1(x{k} = {H_inverse}\n')
+        tk = 1
+        d = -H_inverse.dot(grad)
         if np.all(H_inverse) > 0:  # шаг 8 - проверка, что все элементы матрицы > 0
-            d = -H_inverse.dot(grad)  # шаг 9 - умножаем матрицу H на вектор grad
             tk = 1
             xk = x + tk * d  # шаг 10 при d = -H^-1(xk)*grad(xk)
             x_new = xk
             print(f'Да. Переходим к шагу 9\n\n[ШАГ 9_{k}]\nd{k} = {d}\n\n[ШАГ 10_{k}]\nx{k+1} = {xk}, tk = {tk}')
         else:
-            tk = 1
-            d = -grad  # шаг 10 при d = -grad(xk)
-            xk = x + tk * d  # шаг 10 при d = -H^-1(xk)*grad(xk)
-            while xk < x:
+            xk = x - tk * grad_f(x)  # шаг 10 при d = -H^-1(xk)*grad(xk)
+            while f(xk) < f(x):
                 tk /= 2
+            xk = x + tk * d
             x_new = xk
             print(f'Да. Переходим к шагу 9\n\n[ШАГ 9_{k}]\nd{k} = {d}\n\n[ШАГ 10_{k}]\nx{k + 1} = {xk}, tk = {tk}')
         print(f'\n[ШАГ 11_{k}]\nПроверка выполнения условий: ||x{k+1}|| < e2, |f(x{k+1} - f(x{k}| < e2')
@@ -63,8 +63,26 @@ def grad_f(x):
     return np.array([3 * (x[0]) ** 2 + 0.6 * x[1], 0.6 * x[0] + 12 * x[1]])
 
 
-def H(x):
-    return np.array([[6 * x[0], 0.6], [0.6, 12]])
+def H(f, x):
+    """
+    Computes the Hessian matrix of function f at point x using central difference.
+    """
+    n = x.shape[0]
+    hessian = np.zeros((n, n))
+    eps = np.sqrt(np.finfo(float).eps) # machine epsilon
+
+    for i in range(n):
+        for j in range(i, n):
+            if i == j:
+                # diagonal elements
+                hessian[i][j] = (f(x + eps*np.eye(n)[i]) - 2*f(x) + f(x - eps*np.eye(n)[i])) / (eps**2)
+            else:
+                # off-diagonal elements
+                hessian[i][j] = hessian[j][i] = (f(x + eps*np.array([1 if k==i or k==j else 0 for k in range(n)])) \
+                                                - f(x + eps*np.array([1 if k==i else 0 for k in range(n)])) \
+                                                - f(x + eps*np.array([1 if k==j else 0 for k in range(n)])) \
+                                                + f(x)) / (eps**2)
+    return hessian
 
 
 def graph(x, k):
@@ -88,7 +106,7 @@ def graph(x, k):
 
 print('[ШАГ 1]\n')
 # x0 = np.array([float(input('x1:')), float(input('x2:'))])
-x0 = np.array([1.6, 0.5])
+x0 = np.array([1.5, 0.5])
 e1, e2 = 0.15, 0.20
 M = 10
 print(f'x0 = {x0}, e1 = {e1}, e2 = {e2}, M = {M}')
